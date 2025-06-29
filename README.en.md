@@ -83,7 +83,3 @@ Developed by Fábio Ferreira ([@fabiomlferreira](https://x.com/fabiomlferreira))
 Enhanced by Pau Oliva ([@pof](https://x.com/pof)) with ideas from Tommy Tong's [interactive-mcp](https://github.com/ttommyth/interactive-mcp).
 
 UI Optimized by kele527 ([@kele527](https://x.com/jasonya76775253))
-
-CDN acceleration and security protection for this project are sponsored by Tencent EdgeOne.
-
-[![eo.png](./eo.png)](https://edgeone.ai/?from=github)
