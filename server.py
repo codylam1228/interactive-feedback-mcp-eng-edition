@@ -8,10 +8,11 @@ import json
 import tempfile
 import subprocess
 import base64
-from typing import Annotated, Dict, Tuple, List
+from typing import Annotated, Dict, List
 
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
+from mcp.types import ContentBlock, TextContent
 from pydantic import Field
 
 # The log_level is necessary for Cline to work: https://github.com/jlowin/fastmcp/issues/81
@@ -64,7 +65,7 @@ def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None)
 def interactive_feedback(
     message: str = Field(description="The specific question for the user"),
     predefined_options: list = Field(default=None, description="Predefined options for the user to choose from (optional)"),
-) -> Tuple[str | Image, ...]:
+) -> List[ContentBlock]:
     """
     Request interactive feedback from the user.
     """
@@ -85,14 +86,18 @@ def interactive_feedback(
             txt += f"\n\n[warning] One image failed to decode."
 
     # Assemble tuple based on actual returned content
-    if txt and images:
-        return (txt, *images)
-    elif txt:
-        return txt
-    elif images:
-        return (images[0],) if len(images) == 1 else tuple(images)
-    else:
-        return ("",)
+    contents: List[ContentBlock] = []
+
+    if txt:
+        contents.append(TextContent(type="text", text=txt))
+
+    for image in images:
+        contents.append(image.to_image_content())
+
+    if not contents:
+        contents.append(TextContent(type="text", text=""))
+
+    return contents
 
 if __name__ == "__main__":
     mcp.run(transport="stdio", log_level="ERROR")
