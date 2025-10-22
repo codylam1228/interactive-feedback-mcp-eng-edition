@@ -10,11 +10,12 @@ import subprocess
 import base64
 from typing import Annotated, Dict, Tuple, List
 
-from fastmcp import FastMCP, Image
+from fastmcp import FastMCP
+from fastmcp.utilities.types import Image
 from pydantic import Field
 
 # The log_level is necessary for Cline to work: https://github.com/jlowin/fastmcp/issues/81
-mcp = FastMCP("Interactive Feedback MCP", log_level="ERROR")
+mcp = FastMCP("Interactive Feedback MCP")
 
 def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None) -> dict[str, str]:
     # Create a temporary file for the feedback result
@@ -73,17 +74,17 @@ def interactive_feedback(
     txt: str = result_dict.get("interactive_feedback", "").strip()
     img_b64_list: List[str] = result_dict.get("images", [])
 
-    # 把 base64 变成 Image 对象
+    # Convert base64 to Image objects
     images: List[Image] = []
     for b64 in img_b64_list:
         try:
             img_bytes = base64.b64decode(b64)
             images.append(Image(data=img_bytes, format="png"))
         except Exception:
-            # 若解码失败，忽略该图片并在文字中提示
-            txt += f"\n\n[warning] 有一张图片解码失败。"
+            # If decoding fails, ignore the image and notify in text
+            txt += f"\n\n[warning] One image failed to decode."
 
-    # 根据返回的实际内容组装 tuple
+    # Assemble tuple based on actual returned content
     if txt and images:
         return (txt, *images)
     elif txt:
@@ -94,4 +95,4 @@ def interactive_feedback(
         return ("",)
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    mcp.run(transport="stdio", log_level="ERROR")
