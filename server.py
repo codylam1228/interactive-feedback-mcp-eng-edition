@@ -8,7 +8,7 @@ import json
 import tempfile
 import subprocess
 import base64
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
@@ -18,7 +18,7 @@ from pydantic import Field
 # The log_level is necessary for Cline to work: https://github.com/jlowin/fastmcp/issues/81
 mcp = FastMCP("Interactive Feedback MCP")
 
-def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None) -> dict:
+def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None) -> Dict[str, Any]:
     # Create a temporary file for the feedback result
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         output_file = tmp.name
@@ -43,24 +43,28 @@ def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None)
             args,
             check=False,
             shell=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            capture_output=True,
             stdin=subprocess.DEVNULL,
             close_fds=True,
             timeout=300  # 5 minute timeout to prevent indefinite hanging
         )
         if result.returncode != 0:
-            raise Exception(f"Failed to launch feedback UI: {result.returncode}")
+            stderr = result.stderr.decode('utf-8', errors='ignore')
+            raise Exception(f"Failed to launch feedback UI (code {result.returncode}): {stderr}")
 
         # Read the result from the temporary file
-        with open(output_file, 'r') as f:
-            result = json.load(f)
+        try:
+            with open(output_file, 'r') as f:
+                result = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            raise Exception(f"Failed to read feedback result: {e}")
+        
         os.unlink(output_file)
         return result
-    except Exception as e:
+    except Exception:
         if os.path.exists(output_file):
             os.unlink(output_file)
-        raise e
+        raise
 
 @mcp.tool()
 def interactive_feedback(
@@ -84,7 +88,8 @@ def interactive_feedback(
             images.append(Image(data=img_bytes, format="png"))
         except Exception:
             # If decoding fails, ignore the image and notify in text
-            txt += f"\n\n[warning] One image failed to decode."
+            warning = "[warning] One image failed to decode."
+            txt = f"{txt}\n\n{warning}" if txt else warning
 
     # Assemble tuple based on actual returned content
     contents: List[ContentBlock] = []
