@@ -9,18 +9,25 @@ import tempfile
 import subprocess
 import base64
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
 from mcp.types import ContentBlock, TextContent
 from pydantic import Field
 
-# The log_level parameter (set in mcp.run() at line 109) is necessary for Cline to work: 
-# https://github.com/jlowin/fastmcp/issues/81
+# Set log_level to ERROR to suppress verbose logs that interfere with Cline's MCP protocol parsing
+# See: https://github.com/jlowin/fastmcp/issues/81
 mcp = FastMCP("Interactive Feedback MCP")
 
-def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None) -> Dict[str, Any]:
+
+class FeedbackResult(TypedDict):
+    """Type definition for feedback result structure"""
+    interactive_feedback: str
+    images: List[str]
+
+
+def launch_feedback_ui(summary: str, predefinedOptions: Optional[List[str]] = None) -> FeedbackResult:
     # Create a temporary file for the feedback result
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         output_file = tmp.name
@@ -29,17 +36,22 @@ def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None)
         # Get the path to feedback_ui.py relative to this script
         script_dir = os.path.dirname(os.path.abspath(__file__))
         feedback_ui_path = os.path.join(script_dir, "feedback_ui.py")
+        
+        # Validate that feedback_ui.py exists
+        if not os.path.exists(feedback_ui_path):
+            raise FileNotFoundError(f"feedback_ui.py not found at: {feedback_ui_path}")
 
         # Run feedback_ui.py as a separate process
         # NOTE: There appears to be a bug in uv, so we need
         # to pass a bunch of special flags to make this work
+        # Use JSON encoding for predefined_options to safely handle special characters
         args = [
             sys.executable,
             "-u",
             feedback_ui_path,
             "--prompt", summary,
             "--output-file", output_file,
-            "--predefined-options", "|||".join(predefinedOptions) if predefinedOptions else ""
+            "--predefined-options", json.dumps(predefinedOptions) if predefinedOptions else ""
         ]
         result = subprocess.run(
             args,
@@ -67,23 +79,33 @@ def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None)
         # Read the result from the temporary file
         try:
             with open(output_file, 'r', encoding='utf-8') as f:
-                result = json.load(f)
+                result_data = json.load(f)
         except json.JSONDecodeError as e:
             raise Exception(f"Failed to parse feedback result JSON: {e}")
         except IOError as e:
             raise Exception(f"Failed to read feedback result file: {e}")
         
-        os.unlink(output_file)
-        return result
-    except Exception:
+        # Validate result structure
+        if not isinstance(result_data, dict):
+            raise ValueError("Invalid feedback result: expected dict")
+        if "interactive_feedback" not in result_data:
+            result_data["interactive_feedback"] = ""
+        if "images" not in result_data:
+            result_data["images"] = []
+        
+        return result_data
+    finally:
+        # Guaranteed cleanup in all cases
         if os.path.exists(output_file):
-            os.unlink(output_file)
-        raise
+            try:
+                os.unlink(output_file)
+            except OSError:
+                pass  # Best effort cleanup
 
 @mcp.tool()
 def interactive_feedback(
     message: str = Field(description="The specific question for the user"),
-    predefined_options: Optional[list] = Field(default=None, description="Predefined options for the user to choose from (optional)"),
+    predefined_options: Optional[List[str]] = Field(default=None, description="Predefined options for the user to choose from (optional)"),
 ) -> List[ContentBlock]:
     """
     Request interactive feedback from the user.

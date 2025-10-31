@@ -1089,11 +1089,21 @@ def feedback_ui(prompt: str, predefined_options: Optional[List[str]] = None, out
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run feedback UI")
     parser.add_argument("--prompt", default="I have completed the modifications according to your request.", help="Prompt message to display to user")
-    parser.add_argument("--predefined-options", default="", help="Pipe-separated predefined options list (|||)")
+    parser.add_argument("--predefined-options", default="", help="JSON-encoded predefined options list")
     parser.add_argument("--output-file", help="JSON file path to save feedback results")
     args = parser.parse_args()
 
-    predefined_options = [opt for opt in args.predefined_options.split("|||") if opt] if args.predefined_options else None
+    # Parse JSON-encoded predefined options
+    predefined_options = None
+    if args.predefined_options:
+        try:
+            predefined_options = json.loads(args.predefined_options)
+            if not isinstance(predefined_options, list):
+                print(f"Warning: predefined_options is not a list, ignoring")
+                predefined_options = None
+        except json.JSONDecodeError as e:
+            print(f"Warning: Failed to parse predefined_options JSON: {e}")
+            predefined_options = None
 
     result = feedback_ui(args.prompt, predefined_options, args.output_file)
     if result:
