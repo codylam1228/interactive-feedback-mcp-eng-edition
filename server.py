@@ -8,6 +8,7 @@ import json
 import tempfile
 import subprocess
 import base64
+import time
 from typing import Any, Dict, List, Optional
 
 from fastmcp import FastMCP
@@ -15,7 +16,8 @@ from fastmcp.utilities.types import Image
 from mcp.types import ContentBlock, TextContent
 from pydantic import Field
 
-# The log_level is necessary for Cline to work: https://github.com/jlowin/fastmcp/issues/81
+# The log_level parameter (set in mcp.run() at line 109) is necessary for Cline to work: 
+# https://github.com/jlowin/fastmcp/issues/81
 mcp = FastMCP("Interactive Feedback MCP")
 
 def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None) -> Dict[str, Any]:
@@ -49,15 +51,27 @@ def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None)
             timeout=300  # 5 minute timeout to prevent indefinite hanging
         )
         if result.returncode != 0:
-            stderr = result.stderr.decode('utf-8', errors='ignore')
+            stderr = result.stderr.decode('utf-8', errors='ignore') if result.stderr else "Unknown error"
             raise Exception(f"Failed to launch feedback UI (code {result.returncode}): {stderr}")
+
+        # Wait for output file to be written (with timeout)
+        max_wait = 5  # seconds
+        waited = 0
+        while not os.path.exists(output_file) and waited < max_wait:
+            time.sleep(0.1)
+            waited += 0.1
+        
+        if not os.path.exists(output_file):
+            raise Exception("Feedback UI did not produce output file")
 
         # Read the result from the temporary file
         try:
-            with open(output_file, 'r') as f:
+            with open(output_file, 'r', encoding='utf-8') as f:
                 result = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            raise Exception(f"Failed to read feedback result: {e}")
+        except json.JSONDecodeError as e:
+            raise Exception(f"Failed to parse feedback result JSON: {e}")
+        except IOError as e:
+            raise Exception(f"Failed to read feedback result file: {e}")
         
         os.unlink(output_file)
         return result
@@ -82,13 +96,15 @@ def interactive_feedback(
 
     # Convert base64 to Image objects
     images: List[Image] = []
-    for b64 in img_b64_list:
+    for idx, b64 in enumerate(img_b64_list, start=1):
         try:
             img_bytes = base64.b64decode(b64)
+            # TODO: feedback_ui.py doesn't pass back the actual image format, 
+            # so we assume PNG. Consider enhancing the protocol to include format info.
             images.append(Image(data=img_bytes, format="png"))
-        except Exception:
-            # If decoding fails, ignore the image and notify in text
-            warning = "[warning] One image failed to decode."
+        except Exception as e:
+            # If decoding fails, ignore the image and notify in text with specifics
+            warning = f"[warning] Image {idx} failed to decode: {str(e)}"
             txt = f"{txt}\n\n{warning}" if txt else warning
 
     # Assemble tuple based on actual returned content
