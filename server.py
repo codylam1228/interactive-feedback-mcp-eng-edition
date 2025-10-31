@@ -8,7 +8,7 @@ import json
 import tempfile
 import subprocess
 import base64
-from typing import Annotated, Dict, List
+from typing import List, Optional
 
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
@@ -18,7 +18,7 @@ from pydantic import Field
 # The log_level is necessary for Cline to work: https://github.com/jlowin/fastmcp/issues/81
 mcp = FastMCP("Interactive Feedback MCP")
 
-def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None) -> dict[str, str]:
+def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None) -> dict:
     # Create a temporary file for the feedback result
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         output_file = tmp.name
@@ -46,7 +46,8 @@ def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None)
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
-            close_fds=True
+            close_fds=True,
+            timeout=300  # 5 minute timeout to prevent indefinite hanging
         )
         if result.returncode != 0:
             raise Exception(f"Failed to launch feedback UI: {result.returncode}")
@@ -64,7 +65,7 @@ def launch_feedback_ui(summary: str, predefinedOptions: list[str] | None = None)
 @mcp.tool()
 def interactive_feedback(
     message: str = Field(description="The specific question for the user"),
-    predefined_options: list = Field(default=None, description="Predefined options for the user to choose from (optional)"),
+    predefined_options: Optional[list] = Field(default=None, description="Predefined options for the user to choose from (optional)"),
 ) -> List[ContentBlock]:
     """
     Request interactive feedback from the user.
