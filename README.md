@@ -1,7 +1,5 @@
 # 🗣️ Interactive Feedback MCP
 
-[中文文档](./README_cn.md)
-
 Simple [MCP Server](https://modelcontextprotocol.io/) to enable a human-in-the-loop workflow in AI-assisted development tools like [Cursor](https://www.cursor.com), [Cline](https://cline.bot) and [Windsurf](https://windsurf.com). This server allows you to easily provide feedback directly to the AI agent, bridging the gap between AI and you.
 
 **Note:** This server is designed to run locally alongside the MCP client (e.g., Claude Desktop, VS Code), as it needs direct access to the user's operating system to display notifications.
@@ -14,7 +12,17 @@ Simple [MCP Server](https://modelcontextprotocol.io/) to enable a human-in-the-l
 
 ## 🖼️ Example
 
-![Interactive Feedback Example](./demo.png)
+The following screenshots demonstrate how the Interactive Feedback MCP works in practice:
+
+**Figure 1: Interactive Feedback Window**
+This image shows the interactive feedback dialog window that appears when the AI assistant calls the `interactive_feedback` tool. The window displays a question or prompt from the AI, allowing you to provide clarification, select from predefined options, or paste images directly into the feedback field. The modern UI supports markdown formatting, making it easy to provide detailed feedback.
+
+![Interactive Feedback window](./image1.png)
+
+**Figure 2: Result After Using Interactive Feedback**
+This image demonstrates the AI assistant's response after receiving your feedback through the interactive feedback window. The AI uses your input to refine its approach and provide a more accurate solution, all within the same request cycle. This shows how the feedback loop helps the AI understand your requirements better without consuming additional premium API calls.
+
+![Result after using Interactive Feedback](./image2.png)
 
 ## 💡 Why Use This?
 
@@ -27,7 +35,7 @@ Under the hood, it's just a clever use of tool calls to defer the completion of 
 Essentially, this helps your AI assistant _ask for clarification instead of guessing_, without wasting another request. That means fewer wrong answers, better performance, and less wasted API usage.
 
 - **💰 Reduced Premium API Calls:** Avoid wasting expensive API calls generating code based on guesswork.
-- **✅ Fewer Errors:** Clarification \_before\_ action means less incorrect code and wasted time.
+- **✅ Fewer Errors:** Clarification _before_ action means less incorrect code and wasted time.
 - **⏱️ Faster Cycles:** Quick confirmations beat debugging wrong guesses.
 - **🎮 Better Collaboration:** Turns one-way instructions into a dialogue, keeping you in control.
 
@@ -47,20 +55,20 @@ This server exposes the following tool via the Model Context Protocol (MCP):
       - macOS: `brew install uv`
 2.  **Get the code:**
     - Clone this repository:
-      `git clone https://github.com/kele527/interactive-feedback-mcp.git`
+      `git clone https://github.com/codylam1228/interactive-feedback-mcp-eng-edition.git`
     - Or download the source code.
 
 ## ⚙️ Configuration
 
 1. Add the following configuration to your `claude_desktop_config.json` (Claude Desktop) or `mcp.json` (Cursor):
-   **Remember to change the `/path/to/interactive-feedback-mcp` path to the actual path where you cloned the repository on your system.**
+   **Remember to change the `/path/to/interactive-feedback-mcp-eng-edition` path to the actual path where you cloned the repository on your system.**
 
 ```json
 {
   "mcpServers": {
     "interactive-feedback": {
       "command": "uv",
-      "args": ["--directory", "/path/to/interactive-feedback-mcp", "run", "server.py"],
+      "args": ["--directory", "/path/to/interactive-feedback-mcp-eng-edition", "run", "server.py"],
       "timeout": 600,
       "autoApprove": ["interactive_feedback"]
     }
@@ -78,8 +86,11 @@ This will ensure your AI assistant always uses this MCP server to request user f
 
 ## 🙏 Acknowledgements
 
-Developed by Fábio Ferreira ([@fabiomlferreira](https://x.com/fabiomlferreira)).
+This project is an English edition maintained by [codylam1228](https://github.com/codylam1228).
 
-Enhanced by Pau Oliva ([@pof](https://x.com/pof)) with ideas from Tommy Tong's [interactive-mcp](https://github.com/ttommyth/interactive-mcp).
+It is a fork with the following lineage:
+1.  Forked from [kele527/interactive-feedback-mcp](https://github.com/kele527/interactive-feedback-mcp) (UI Optimization by [@kele527](https://x.com/jasonya76775253))
+2.  Who forked from [poliva/interactive-feedback-mcp](https://github.com/poliva/interactive-feedback-mcp) (Enhanced by Pau Oliva [@pof](https://x.com/pof))
+3.  Who forked from [noopstudios/interactive-feedback-mcp](https://github.com/noopstudios/interactive-feedback-mcp) (Original development by Fábio Ferreira [@fabiomlferreira](https://x.com/fabiomlferreira))
 
-UI Optimized by kele527 ([@kele527](https://x.com/jasonya76775253))
+Ideas also adapted from Tommy Tong's [interactive-mcp](https://github.com/ttommyth/interactive-mcp).
