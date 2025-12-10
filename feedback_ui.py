@@ -23,6 +23,7 @@ from PySide6.QtGui import QTextCursor, QIcon, QKeyEvent, QPalette, QColor, QText
 class FeedbackResult(TypedDict):
     interactive_feedback: str
     images: List[str]
+    end_session: bool
 
 def get_dark_mode_palette(app: QApplication):
     darkPalette = app.palette()
@@ -701,6 +702,11 @@ class FeedbackUI(QMainWindow):
         submit_button.clicked.connect(self._submit_feedback)
         submit_button.setCursor(Qt.PointingHandCursor)  # Set mouse cursor to hand shape
 
+        # Create the end button (stops the loop)
+        end_button = QPushButton("&End")
+        end_button.clicked.connect(lambda: self._submit_feedback(end=True))
+        end_button.setCursor(Qt.PointingHandCursor)
+
         # Create the cancel button
         cancel_button = QPushButton("&Cancel")
         cancel_button.clicked.connect(self.close) # Connect cancel button to close the window
@@ -708,6 +714,7 @@ class FeedbackUI(QMainWindow):
 
         # Add buttons to the horizontal layout
         button_layout.addWidget(cancel_button) # Put cancel on the left
+        button_layout.addWidget(end_button)    # End button next to submit
         button_layout.addWidget(submit_button) # Put submit on the right
 
         # Apply modern style and increase size for the submit button
@@ -725,6 +732,24 @@ class FeedbackUI(QMainWindow):
             "}"
             "QPushButton:pressed {"
             "  background-color: #1565C0;"
+            "}"
+        )
+
+        # Apply style for the end button
+        end_button.setStyleSheet(
+            "QPushButton {"
+            "  padding: 10px 20px;margin-left:10px;margin-right:10px;"
+            "  font-size: 14px;"
+            "  border-radius: 5px;"
+            "  background-color: #d32f2f; /* Red */"
+            "  color: white;"
+            "  border: none;"
+            "}"
+            "QPushButton:hover {"
+            "  background-color: #b71c1c;"
+            "}"
+            "QPushButton:pressed {"
+            "  background-color: #9a0007;"
             "}"
         )
 
@@ -748,7 +773,7 @@ class FeedbackUI(QMainWindow):
 
         layout.addWidget(self.feedback_text)
         layout.addLayout(button_layout)
-        # Add a line of text: by rowanyang center display, allow selection and copying of text
+        # Add a line of text: by Cody center display, allow selection and copying of text
         if sys.platform == "darwin":  # macOS
             zoom_shortcut_text = "CMD+/-"
             line_height_shortcut_text = "CMD+Shift+L"
@@ -756,18 +781,18 @@ class FeedbackUI(QMainWindow):
             zoom_shortcut_text = "CTRL+/-"
             line_height_shortcut_text = "CTRL+ALT+H"
 
-        label_text = f"Support {zoom_shortcut_text} to zoom font, {line_height_shortcut_text} to adjust line height (5 levels cycle)  Contact: RowanYang"
-        by_rowanyang_label = QLabel(label_text)
-        by_rowanyang_label.setStyleSheet(""" color: gray; font-size: 10pt; font-family:"PingFang SC", "Hiragino Sans GB", sans-serif; """)
-        by_rowanyang_label.setTextInteractionFlags(Qt.TextSelectableByMouse) # Allow text selection
+        label_text = f"Support {zoom_shortcut_text} to zoom font, {line_height_shortcut_text} to adjust line height (5 levels cycle)  Contact: Cody"
+        by_Cody_label = QLabel(label_text)
+        by_Cody_label.setStyleSheet(""" color: gray; font-size: 10pt; font-family:"PingFang SC", "Hiragino Sans GB", sans-serif; """)
+        by_Cody_label.setTextInteractionFlags(Qt.TextSelectableByMouse) # Allow text selection
 
-        # Create a QHBoxLayout to align "By RowanYang" to the center
-        by_rowanyang_layout = QHBoxLayout()
-        by_rowanyang_layout.addStretch(1)
-        by_rowanyang_layout.addWidget(by_rowanyang_label)
-        by_rowanyang_layout.addStretch(1)
-        layout.addSpacing(10) # Add top margin for "By RowanYang" text layout
-        layout.addLayout(by_rowanyang_layout)
+        # Create a QHBoxLayout to align "By Cody" to the center
+        by_Cody_layout = QHBoxLayout()
+        by_Cody_layout.addStretch(1)
+        by_Cody_layout.addWidget(by_Cody_label)
+        by_Cody_layout.addStretch(1)
+        layout.addSpacing(10) # Add top margin for "By Cody" text layout
+        layout.addLayout(by_Cody_layout)
 
     def _setup_shortcuts(self):
         """Set font scaling shortcuts"""
@@ -942,7 +967,7 @@ class FeedbackUI(QMainWindow):
         app.setFont(current_font)
         self._update_all_fonts()
 
-    def _submit_feedback(self):
+    def _submit_feedback(self, end: bool = False):
         default_prompt_text = self.default_prompt_edit.toPlainText().strip()
         feedback_text = self.feedback_text.toPlainText().strip()
         selected_options = []
@@ -981,7 +1006,8 @@ class FeedbackUI(QMainWindow):
 
         self.feedback_result = FeedbackResult(
             interactive_feedback=final_feedback,
-            images=images_b64
+            images=images_b64,
+            end_session=end
         )
         self.close()
 
@@ -999,7 +1025,7 @@ class FeedbackUI(QMainWindow):
         QApplication.instance().exec()
 
         if not self.feedback_result:
-            return FeedbackResult(interactive_feedback="")
+            return FeedbackResult(interactive_feedback="", images=[], end_session=False)
 
         return self.feedback_result
 

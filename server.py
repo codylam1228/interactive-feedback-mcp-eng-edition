@@ -22,13 +22,14 @@ mcp = FastMCP("Interactive Feedback MCP")
 
 # Default system prompt shown in the new “System default prompt” textbox
 DEFAULT_SYSTEM_PROMPT = (
-    "Always maintain an active feedback loop. After addressing the user's input, you must proactively ask follow-up questions to refine the answer. Never terminate the interaction without confirming user satisfaction. Always conclude your response with: 'Anything else?' by calling interactive-feedback tool again."
+    "Always maintain an active feedback loop. After addressing the user's input, you must proactively ask follow-up questions to refine the answer. Never terminate the interaction without confirming user satisfaction. Always conclude your response with: [Your Answer] + [Your Question] + 'Anything else?' by calling the interactive-feedback tool again."
 )
 
 class FeedbackResult(TypedDict):
     """Type definition for feedback result structure"""
     interactive_feedback: str
     images: List[str]
+    end_session: bool
 
 
 def launch_feedback_ui(
@@ -76,7 +77,6 @@ def launch_feedback_ui(
             capture_output=True,
             stdin=subprocess.DEVNULL,
             close_fds=True,
-            timeout=300  # 5 minute timeout to prevent indefinite hanging
         )
         if result.returncode != 0:
             stderr = result.stderr.decode('utf-8', errors='ignore') if result.stderr else "Unknown error"
@@ -84,7 +84,8 @@ def launch_feedback_ui(
 
         # Check if output file exists and has content
         if not os.path.exists(output_file):
-            raise Exception("Feedback UI did not produce output file")
+            # Treat a missing file as a user-cancelled window instead of an error
+            return FeedbackResult(interactive_feedback="", images=[], end_session=False)
 
         # Read the result from the temporary file
         try:
@@ -102,6 +103,8 @@ def launch_feedback_ui(
             result_data["interactive_feedback"] = ""
         if "images" not in result_data:
             result_data["images"] = []
+        if "end_session" not in result_data:
+            result_data["end_session"] = False
         
         return result_data
     finally:
@@ -121,14 +124,26 @@ def interactive_feedback(
     Request interactive feedback from the user.
     """
     predefined_options_list = predefined_options if isinstance(predefined_options, list) else None
-    result_dict = launch_feedback_ui(
-        message,
-        predefined_options_list,
-        default_prompt=DEFAULT_SYSTEM_PROMPT,
-    )
+    error_message: Optional[str] = None
+    try:
+        result_dict = launch_feedback_ui(
+            message,
+            predefined_options_list,
+            default_prompt=DEFAULT_SYSTEM_PROMPT,
+        )
+    except Exception as e:
+        error_message = f"[error] Feedback UI failed: {e}"
+
+    if error_message:
+        return [TextContent(type="text", text=error_message)]
 
     txt: str = result_dict.get("interactive_feedback", "").strip()
     img_b64_list: List[str] = result_dict.get("images", [])
+    end_session: bool = bool(result_dict.get("end_session", False))
+
+    if end_session:
+        stop_note = "User selected End. Finalize the response now and do not call the interactive_feedback tool again."
+        txt = f"{txt}\n\n{stop_note}" if txt else stop_note
 
     # Convert base64 to Image objects
     images: List[Image] = []
