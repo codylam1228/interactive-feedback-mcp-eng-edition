@@ -1,7 +1,20 @@
 # 🗣️ Interactive Feedback MCP
 
-Simple [MCP Server](https://modelcontextprotocol.io/) to enable a human-in-the-loop workflow in AI-assisted development tools like [Cursor](https://www.cursor.com), [Cline](https://cline.bot) and [Windsurf](https://windsurf.com). This server allows you to easily provide feedback directly to the AI agent, bridging the gap between AI and you.
+An [MCP Server](https://modelcontextprotocol.io/) that enables interactive, multi-turn conversations between you and AI assistants (like in [Cursor](https://www.cursor.com), [Cline](https://cline.bot), and [Windsurf](https://windsurf.com)) within a single API request, allowing iterative refinement without consuming additional premium API calls.
 
+## 🎯 Key Features
+
+- **🔄 Continuous Feedback Loop**: The AI can repeatedly call `interactive_feedback` to engage in a multi-turn conversation within a single API request, allowing for iterative refinement until you're satisfied. You control when to stop using the "End" button.
+
+- **🖼️ Image Upload Support**: Paste images directly into the feedback field. Images are automatically converted to base64 format and sent to the AI, enabling visual context and image-based communication.
+
+- **✅ Predefined Options**: The AI can present predefined options as checkboxes for quick decision-making, streamlining common choices and reducing typing.
+
+- **⚙️ System Default Prompt**: Editable textbox that allows you to set persistent default instructions that are automatically included with every feedback submission. Your custom prompt is saved across sessions.
+
+- **⌨️ Keyboard Shortcuts**: Quick actions like `Ctrl+Enter` (or `Cmd+Enter` on Mac) to submit, font zoom controls, and line height adjustments for a smooth user experience.
+
+- **💰 Zero Additional API Costs**: All feedback interactions happen within a single API request cycle. Tool calls don't count as separate premium interactions, so you can iterate freely without consuming your monthly request limit.
 **Note:** This server is designed to run locally alongside the MCP client (e.g., Claude Desktop, VS Code), as it needs direct access to the user's operating system to display notifications.
 
 ## New Features
@@ -9,30 +22,15 @@ Simple [MCP Server](https://modelcontextprotocol.io/) to enable a human-in-the-l
 - Beautiful UI
 - Support pasting images
 - Support markdown format
+- **System default prompt**: Editable textbox that allows you to set a default prompt that gets automatically included with every feedback submission. This prompt is persisted across sessions and can be reset to the server default at any time.
+- **End button**: Red "End" button that signals the AI to finalize the response and stop the feedback loop, preventing further `interactive_feedback` tool calls in the current session.
 
-## 🖼️ Example
-
-The following screenshots demonstrate how the Interactive Feedback MCP works in practice:
-
-**Figure 1: Interactive Feedback Window**
-This image shows the interactive feedback dialog window that appears when the AI assistant calls the `interactive_feedback` tool. The window displays a question or prompt from the AI, allowing you to provide clarification, select from predefined options, or paste images directly into the feedback field. The modern UI supports markdown formatting, making it easy to provide detailed feedback.
+## 🖼️ **Interactive Feedback Window**
+This image shows the interactive feedback dialog window that appears when the AI assistant calls the `interactive_feedback` tool. The window displays a question or prompt from the AI, allowing you to provide clarification, select from predefined options, or paste images directly into the feedback field. The modern UI supports markdown formatting, making it easy to provide detailed feedback. The window also includes a "System default prompt" textbox for setting persistent default instructions, and an "End" button to signal the AI to finalize the response.
 
 ![Interactive Feedback window](./image1.png)
 
-**Figure 2: Result After Using Interactive Feedback**
-This image demonstrates the AI assistant's response after receiving your feedback through the interactive feedback window. The AI uses your input to refine its approach and provide a more accurate solution, all within the same request cycle. This shows how the feedback loop helps the AI understand your requirements better without consuming additional premium API calls.
-
-![Result after using Interactive Feedback](./image2.png)
-
 ## 💡 Why Use This?
-
-In environments like Cursor, every prompt you send to the LLM is treated as a distinct request — and each one counts against your monthly limit (e.g. 500 premium requests). This becomes inefficient when you're iterating on vague instructions or correcting misunderstood output, as each follow-up clarification triggers a full new request.
-
-This MCP server introduces a workaround: it allows the model to pause and request clarification before finalizing the response. Instead of completing the request, the model triggers a tool call (`interactive_feedback`) that opens an interactive feedback window. You can then provide more detail or ask for changes — and the model continues the session, all within a single request.
-
-Under the hood, it's just a clever use of tool calls to defer the completion of the request. Since tool calls don't count as separate premium interactions, you can loop through multiple feedback cycles without consuming additional requests.
-
-Essentially, this helps your AI assistant _ask for clarification instead of guessing_, without wasting another request. That means fewer wrong answers, better performance, and less wasted API usage.
 
 - **💰 Reduced Premium API Calls:** Avoid wasting expensive API calls generating code based on guesswork.
 - **✅ Fewer Errors:** Clarification _before_ action means less incorrect code and wasted time.
@@ -45,14 +43,39 @@ This server exposes the following tool via the Model Context Protocol (MCP):
 
 - `interactive_feedback`: Asks the user a question and returns their answer. Can display predefined options.
 
+## ✨ Key Features
+
+### 1. System Default Prompt
+
+The feedback window includes an editable "System default prompt" textbox that allows you to set persistent instructions that are automatically included with every feedback submission. This is useful for:
+
+- Setting default behavior instructions for the AI (e.g., "Always maintain an active feedback loop...")
+- Providing context that should be included in every interaction
+- Customizing the AI's default response style
+
+The default prompt is:
+- **Persisted across sessions**: Your custom prompt is saved and will appear in future feedback windows
+- **Reset to server default**: Use the "Reset to server default" button to restore the original server-provided default prompt
+- **Combined with your feedback**: The system default prompt is automatically prepended to your feedback text when submitting
+
+### 2. Button Usage
+
+The feedback window has several buttons:
+
+**In the System Default Prompt section:**
+- **Reset to server default**: Restores the system default prompt textbox to the original server-provided default value, discarding any custom edits you've made.
+
+**At the bottom of the window:**
+- **Submit** (Blue): Sends your feedback to the AI and continues the conversation. You can also press `Ctrl+Enter` (or `Cmd+Enter` on Mac) to submit.
+- **End** (Red): Sends your feedback and signals the AI to finalize the response, stopping the feedback loop for this session.
+- **Cancel** (Grey): Closes the window without sending any feedback, effectively canceling the interaction.
+
 ## 📦 Installation
 
 1.  **Prerequisites:**
     - Python 3.10+
-    - [uv](https://github.com/astral-sh/uv) (Python package manager). Install it with:
-      - Windows: `pip install uv`
-      - Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-      - macOS: `brew install uv`
+    - [uv](https://github.com/astral-sh/uv) (Python package manager). 
+    
 2.  **Get the code:**
     - Clone this repository:
       `git clone https://github.com/codylam1228/interactive-feedback-mcp-eng-edition.git`
@@ -68,21 +91,17 @@ This server exposes the following tool via the Model Context Protocol (MCP):
   "mcpServers": {
     "interactive-feedback": {
       "command": "uv",
-      "args": ["--directory", "/path/to/interactive-feedback-mcp-eng-edition", "run", "server.py"],
+      "args": [
+        "--directory", 
+        "</path/to/interactive-feedback-mcp-eng-edition>", 
+        "run", 
+        "server.py"],
       "timeout": 600,
       "autoApprove": ["interactive_feedback"]
     }
   }
 }
 ```
-
-2. Add the following to the custom rules in your AI assistant (in Cursor Settings > Rules > User Rules):
-
-> If requirements or instructions are unclear use the tool interactive_feedback to ask clarifying questions to the user before proceeding, do not make assumptions. Whenever possible, present the user with predefined options through the interactive_feedback MCP tool to facilitate quick decisions.
-
-> Whenever you're about to complete a user request, call the interactive_feedback tool to request user feedback before ending the process. If the feedback is empty you can end the request and don't call the tool in loop.
-
-This will ensure your AI assistant always uses this MCP server to request user feedback when the prompt is unclear and before marking the task as completed.
 
 ## 🙏 Acknowledgements
 
@@ -92,5 +111,4 @@ It is a fork with the following lineage:
 1.  Forked from [kele527/interactive-feedback-mcp](https://github.com/kele527/interactive-feedback-mcp) (UI Optimization by [@kele527](https://x.com/jasonya76775253))
 2.  Who forked from [poliva/interactive-feedback-mcp](https://github.com/poliva/interactive-feedback-mcp) (Enhanced by Pau Oliva [@pof](https://x.com/pof))
 3.  Who forked from [noopstudios/interactive-feedback-mcp](https://github.com/noopstudios/interactive-feedback-mcp) (Original development by Fábio Ferreira [@fabiomlferreira](https://x.com/fabiomlferreira))
-
-Ideas also adapted from Tommy Tong's [interactive-mcp](https://github.com/ttommyth/interactive-mcp).
+4. (Current) [codylam1228/interactive-feedback-mcp-eng-edition](https://github.com/codylam1228/interactive-feedback-mcp-eng-edition)
