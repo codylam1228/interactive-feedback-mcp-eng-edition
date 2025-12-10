@@ -20,6 +20,16 @@ from pydantic import Field
 # See: https://github.com/jlowin/fastmcp/issues/81
 mcp = FastMCP("Interactive Feedback MCP")
 
+# Default system prompt shown in the new “System default prompt” textbox
+DEFAULT_SYSTEM_PROMPT = (
+    "Always use interactive feedback.\n\n"
+    "If the user’s request is ambiguous, incomplete, or high-risk, ask one or more specific "
+    "clarifying questions before producing the final answer.\n\n"
+    "For multi-step tasks, briefly outline your plan and ask the user to confirm or adjust it "
+    "before executing, unless the user explicitly says to proceed without confirmation.\n\n"
+    "Use the user’s preferred language (English) when asking clarifying questions.\n\n"
+    "Before ending a conversation or after completing a major task, ask the user: “Anything else?”"
+)
 
 class FeedbackResult(TypedDict):
     """Type definition for feedback result structure"""
@@ -27,7 +37,11 @@ class FeedbackResult(TypedDict):
     images: List[str]
 
 
-def launch_feedback_ui(summary: str, predefinedOptions: Optional[List[str]] = None) -> FeedbackResult:
+def launch_feedback_ui(
+    summary: str,
+    predefinedOptions: Optional[List[str]] = None,
+    default_prompt: Optional[str] = None,
+) -> FeedbackResult:
     # Create a temporary file for the feedback result
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         output_file = tmp.name
@@ -46,7 +60,11 @@ def launch_feedback_ui(summary: str, predefinedOptions: Optional[List[str]] = No
         # to pass a bunch of special flags to make this work
         # Use JSON encoding for predefined_options to safely handle special characters
         # Use Base64 encoding for prompt to avoid command line parsing issues (e.g. with - characters)
-        prompt_b64 = base64.b64encode(summary.encode('utf-8')).decode('utf-8')
+        prompt_b64 = base64.b64encode(summary.encode("utf-8")).decode("utf-8")
+        default_prompt_str = default_prompt or ""
+        default_prompt_b64 = base64.b64encode(default_prompt_str.encode("utf-8")).decode(
+            "utf-8"
+        )
         
         args = [
             sys.executable,
@@ -54,7 +72,8 @@ def launch_feedback_ui(summary: str, predefinedOptions: Optional[List[str]] = No
             feedback_ui_path,
             "--encoded-prompt", prompt_b64,
             "--output-file", output_file,
-            "--predefined-options", json.dumps(predefinedOptions) if predefinedOptions else ""
+            "--predefined-options", json.dumps(predefinedOptions) if predefinedOptions else "",
+            "--default-prompt", default_prompt_b64,
         ]
         result = subprocess.run(
             args,
@@ -108,7 +127,11 @@ def interactive_feedback(
     Request interactive feedback from the user.
     """
     predefined_options_list = predefined_options if isinstance(predefined_options, list) else None
-    result_dict = launch_feedback_ui(message, predefined_options_list)
+    result_dict = launch_feedback_ui(
+        message,
+        predefined_options_list,
+        default_prompt=DEFAULT_SYSTEM_PROMPT,
+    )
 
     txt: str = result_dict.get("interactive_feedback", "").strip()
     img_b64_list: List[str] = result_dict.get("images", [])

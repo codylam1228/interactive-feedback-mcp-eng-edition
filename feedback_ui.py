@@ -178,10 +178,13 @@ class FeedbackUI(QMainWindow):
     # Cache Markdown instance
     _markdown_instance = None
 
-    def __init__(self, prompt: str, predefined_options: Optional[List[str]] = None):
+    def __init__(self, prompt: str, predefined_options: Optional[List[str]] = None, default_prompt: str = ""):
         super().__init__()
         self.prompt = prompt
         self.predefined_options = predefined_options or []
+        self.server_default_prompt = default_prompt or ""
+        self.stored_default_prompt = None
+        self.current_default_prompt = self.server_default_prompt
 
         self.feedback_result = None
 
@@ -208,6 +211,9 @@ class FeedbackUI(QMainWindow):
 
         self.settings = QSettings("InteractiveFeedbackMCP", "InteractiveFeedbackMCP")
         self.line_height = self._load_line_height()
+        self.stored_default_prompt = self._load_default_prompt()
+        if self.stored_default_prompt is not None:
+            self.current_default_prompt = self.stored_default_prompt
 
         # Load general UI settings for the main window (geometry, state)
         self.settings.beginGroup("MainWindow_General")
@@ -533,6 +539,50 @@ class FeedbackUI(QMainWindow):
 
         layout.addWidget(self.description_text)
 
+        # System default prompt textbox + reset
+        default_prompt_header = QHBoxLayout()
+        default_prompt_label = QLabel("System default prompt")
+        default_prompt_label.setStyleSheet("color: #ccc; font-weight: bold;")
+        reset_button = QPushButton("Reset to server default")
+        reset_button.setCursor(Qt.PointingHandCursor)
+        reset_button.clicked.connect(self._reset_to_server_default)
+        reset_button.setStyleSheet(
+            "QPushButton {"
+            "  padding: 4px 10px;"
+            "  font-size: 12px;"
+            "  border-radius: 5px;"
+            "  background-color: #444;"
+            "  color: white;"
+            "  border: 1px solid #666;"
+            "}"
+            "QPushButton:hover {"
+            "  background-color: #555;"
+            "}"
+            "QPushButton:pressed {"
+            "  background-color: #333;"
+            "}"
+        )
+        default_prompt_header.addWidget(default_prompt_label)
+        default_prompt_header.addStretch(1)
+        default_prompt_header.addWidget(reset_button)
+        layout.addLayout(default_prompt_header)
+
+        self.default_prompt_edit = QTextEdit()
+        self.default_prompt_edit.setPlaceholderText("Enter or edit the system default prompt shown to the agent")
+        self.default_prompt_edit.setText(self.current_default_prompt)
+        self.default_prompt_edit.setMinimumHeight(60)
+        self.default_prompt_edit.setMaximumHeight(120)
+        self.default_prompt_edit.setStyleSheet(
+            "QTextEdit {"
+            "  border-radius: 8px;"
+            "  padding: 6px;"
+            "  margin: 0px 0 8px 0;"
+            "  border: 1px solid #444444;"
+            "  background-color: #1e1e1e;"
+            "}"
+        )
+        layout.addWidget(self.default_prompt_edit)
+
         # Add predefined options if any
         self.option_checkboxes = []
         if self.predefined_options and len(self.predefined_options) > 0:
@@ -794,6 +844,10 @@ class FeedbackUI(QMainWindow):
         self._update_description_text()
         print(f"Line height switched to: {self.line_height}")
 
+    def _reset_to_server_default(self):
+        """Restore textbox to the current server-provided default prompt"""
+        self.default_prompt_edit.setPlainText(self.server_default_prompt)
+
     def adjust_font_size(self, factor: float):
         """Adjust all font sizes proportionally"""
         app = QApplication.instance()
@@ -840,6 +894,20 @@ class FeedbackUI(QMainWindow):
         self.settings.endGroup()
         return line_height
 
+    def _save_default_prompt(self, prompt_text: str):
+        """Persist the editable default prompt outside repo-tracked files"""
+        self.settings.beginGroup("DefaultPrompt")
+        self.settings.setValue("text", prompt_text)
+        self.settings.endGroup()
+
+    def _load_default_prompt(self) -> Optional[str]:
+        """Load stored default prompt; return None if not previously saved"""
+        self.settings.beginGroup("DefaultPrompt")
+        has_value = self.settings.contains("text")
+        value = self.settings.value("text", None, type=str) if has_value else None
+        self.settings.endGroup()
+        return value
+
     def _update_all_fonts(self):
         """Update fonts for all controls in UI"""
         # Recursively update fonts for all child controls
@@ -875,6 +943,7 @@ class FeedbackUI(QMainWindow):
         self._update_all_fonts()
 
     def _submit_feedback(self):
+        default_prompt_text = self.default_prompt_edit.toPlainText().strip()
         feedback_text = self.feedback_text.toPlainText().strip()
         selected_options = []
 
@@ -887,20 +956,28 @@ class FeedbackUI(QMainWindow):
         # Get Base64 image data
         image_data = self.feedback_text.get_image_data()
 
-        # Combine selected options and feedback text
-        final_feedback_parts = []
+        # Combine default prompt with user text (options + free text)
+        user_parts = []
 
-        # Add selected options
         if selected_options:
-            final_feedback_parts.append("; ".join(selected_options))
+            user_parts.append("; ".join(selected_options))
 
-        # Add user's text feedback
         if feedback_text:
-            final_feedback_parts.append(feedback_text)
+            user_parts.append(feedback_text)
 
-        # Join with a newline if both parts exist
-        final_feedback = "\n\n".join(final_feedback_parts)
+        user_text = "\n\n".join(user_parts) if user_parts else ""
+
+        final_parts = []
+        if default_prompt_text:
+            final_parts.append(default_prompt_text)
+        if user_text:
+            final_parts.append(user_text)
+
+        final_feedback = "\n\n".join(final_parts) if final_parts else ""
         images_b64 = [img['base64'] for img in image_data]
+
+        # Persist the editable default prompt for future sessions
+        self._save_default_prompt(default_prompt_text)
 
         self.feedback_result = FeedbackResult(
             interactive_feedback=final_feedback,
@@ -1073,7 +1150,7 @@ class FeedbackUI(QMainWindow):
             # If layout is empty, add image directly
             self.images_layout.addWidget(image_frame)
 
-def feedback_ui(prompt: str, predefined_options: Optional[List[str]] = None, output_file: Optional[str] = None) -> Optional[FeedbackResult]:
+def feedback_ui(prompt: str, predefined_options: Optional[List[str]] = None, output_file: Optional[str] = None, default_prompt: str = "") -> Optional[FeedbackResult]:
     # ----- Enable high DPI scaling -----
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -1088,7 +1165,7 @@ def feedback_ui(prompt: str, predefined_options: Optional[List[str]] = None, out
     default_font.setPointSize(15)       # Set global font size to 11pt, modify as needed
     app.setFont(default_font)
 
-    ui = FeedbackUI(prompt, predefined_options)
+    ui = FeedbackUI(prompt, predefined_options, default_prompt)
     result = ui.run()
 
     if output_file and result:
@@ -1106,6 +1183,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt", default="I have completed the modifications according to your request.", help="Prompt message to display to user")
     parser.add_argument("--encoded-prompt", help="Base64 encoded prompt message (overrides --prompt)")
     parser.add_argument("--predefined-options", default="", help="JSON-encoded predefined options list")
+    parser.add_argument("--default-prompt", default="", help="Base64 encoded default prompt for the editable textbox")
     parser.add_argument("--output-file", help="JSON file path to save feedback results")
     args = parser.parse_args()
 
@@ -1130,7 +1208,15 @@ if __name__ == "__main__":
             print(f"Warning: Failed to parse predefined_options JSON: {e}")
             predefined_options = None
 
-    result = feedback_ui(prompt, predefined_options, args.output_file)
+    default_prompt = ""
+    if args.default_prompt:
+        try:
+            default_prompt = base64.b64decode(args.default_prompt).decode("utf-8")
+        except Exception as e:
+            print(f"Warning: Failed to decode default_prompt: {e}")
+            default_prompt = ""
+
+    result = feedback_ui(prompt, predefined_options, args.output_file, default_prompt)
     if result:
         print(f"\nReceived feedback:\n{result['interactive_feedback']}")
     sys.exit(0)
