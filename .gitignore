@@ -19,4 +19,14 @@ uv.lock
 
 # Cursor rules
 .cursor/rules/
+.cursor/commands/
+.cursor/
 
+# openspec
+openspec/
+AGENTS.md
+
+# uv suite
+.venv/
+.python-version
+uv.lock
