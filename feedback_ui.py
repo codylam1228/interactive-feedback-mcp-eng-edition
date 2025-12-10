@@ -187,8 +187,23 @@ class FeedbackUI(QMainWindow):
 
         self.setWindowTitle("Cursor Interactive Feedback MCP")
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_path = os.path.join(script_dir, "images", "feedback.png")
-        self.setWindowIcon(QIcon(icon_path))
+        
+        # Try to find icon in multiple locations
+        icon_candidates = [
+            os.path.join(script_dir, "images", "feedback.png"),
+            os.path.join(script_dir, "feedback.png"),
+            os.path.join(script_dir, "help.png")  # Fallback to help.png if others missing
+        ]
+        
+        icon_path = None
+        for candidate in icon_candidates:
+            if os.path.exists(candidate):
+                icon_path = candidate
+                break
+        
+        if icon_path:
+            self.setWindowIcon(QIcon(icon_path))
+            
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
         self.settings = QSettings("InteractiveFeedbackMCP", "InteractiveFeedbackMCP")
@@ -1089,9 +1104,19 @@ def feedback_ui(prompt: str, predefined_options: Optional[List[str]] = None, out
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run feedback UI")
     parser.add_argument("--prompt", default="I have completed the modifications according to your request.", help="Prompt message to display to user")
+    parser.add_argument("--encoded-prompt", help="Base64 encoded prompt message (overrides --prompt)")
     parser.add_argument("--predefined-options", default="", help="JSON-encoded predefined options list")
     parser.add_argument("--output-file", help="JSON file path to save feedback results")
     args = parser.parse_args()
+
+    # Determine prompt: prefer encoded, fall back to plain
+    prompt = args.prompt
+    if args.encoded_prompt:
+        try:
+            prompt = base64.b64decode(args.encoded_prompt).decode('utf-8')
+        except Exception as e:
+            print(f"Warning: Failed to decode encoded prompt: {e}")
+            # Fall back to args.prompt if decoding fails
 
     # Parse JSON-encoded predefined options
     predefined_options = None
@@ -1105,7 +1130,7 @@ if __name__ == "__main__":
             print(f"Warning: Failed to parse predefined_options JSON: {e}")
             predefined_options = None
 
-    result = feedback_ui(args.prompt, predefined_options, args.output_file)
+    result = feedback_ui(prompt, predefined_options, args.output_file)
     if result:
         print(f"\nReceived feedback:\n{result['interactive_feedback']}")
     sys.exit(0)

@@ -45,11 +45,14 @@ def launch_feedback_ui(summary: str, predefinedOptions: Optional[List[str]] = No
         # NOTE: There appears to be a bug in uv, so we need
         # to pass a bunch of special flags to make this work
         # Use JSON encoding for predefined_options to safely handle special characters
+        # Use Base64 encoding for prompt to avoid command line parsing issues (e.g. with - characters)
+        prompt_b64 = base64.b64encode(summary.encode('utf-8')).decode('utf-8')
+        
         args = [
             sys.executable,
             "-u",
             feedback_ui_path,
-            "--prompt", summary,
+            "--encoded-prompt", prompt_b64,
             "--output-file", output_file,
             "--predefined-options", json.dumps(predefinedOptions) if predefinedOptions else ""
         ]
@@ -66,13 +69,7 @@ def launch_feedback_ui(summary: str, predefinedOptions: Optional[List[str]] = No
             stderr = result.stderr.decode('utf-8', errors='ignore') if result.stderr else "Unknown error"
             raise Exception(f"Failed to launch feedback UI (code {result.returncode}): {stderr}")
 
-        # Wait for output file to be written (with timeout)
-        max_wait = 5  # seconds
-        waited = 0
-        while not os.path.exists(output_file) and waited < max_wait:
-            time.sleep(0.1)
-            waited += 0.1
-        
+        # Check if output file exists and has content
         if not os.path.exists(output_file):
             raise Exception("Feedback UI did not produce output file")
 

@@ -17,4 +17,6 @@ venv*/
 .DS_Store
 uv.lock
 
+# Cursor rules
 .cursor/rules/
+
