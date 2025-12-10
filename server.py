@@ -22,13 +22,7 @@ mcp = FastMCP("Interactive Feedback MCP")
 
 # Default system prompt shown in the new “System default prompt” textbox
 DEFAULT_SYSTEM_PROMPT = (
-    "Always use interactive feedback.\n\n"
-    "If the user’s request is ambiguous, incomplete, or high-risk, ask one or more specific "
-    "clarifying questions before producing the final answer.\n\n"
-    "For multi-step tasks, briefly outline your plan and ask the user to confirm or adjust it "
-    "before executing, unless the user explicitly says to proceed without confirmation.\n\n"
-    "Use the user’s preferred language (English) when asking clarifying questions.\n\n"
-    "Before ending a conversation or after completing a major task, ask the user: “Anything else?”"
+    "Always maintain an active feedback loop. After addressing the user's input, you must proactively ask follow-up questions to refine the answer. Never terminate the interaction without confirming user satisfaction. Always conclude your response with: 'Anything else?' by calling interactive-feedback tool again."
 )
 
 class FeedbackResult(TypedDict):
