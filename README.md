@@ -28,7 +28,7 @@ An [MCP Server](https://modelcontextprotocol.io/) that enables interactive, mult
 ## 🖼️ **Interactive Feedback Window**
 This image shows the interactive feedback dialog window that appears when the AI assistant calls the `interactive_feedback` tool. The window displays a question or prompt from the AI, allowing you to provide clarification, select from predefined options, or paste images directly into the feedback field. The modern UI supports markdown formatting, making it easy to provide detailed feedback. The window also includes a "System default prompt" textbox for setting persistent default instructions, and an "End" button to signal the AI to finalize the response.
 
-![Interactive Feedback window](./image1.png)
+![Interactive Feedback window](./image1.jpg)
 
 ## 💡 Why Use This?
 
