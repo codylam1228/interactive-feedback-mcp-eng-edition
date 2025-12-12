@@ -22,7 +22,15 @@ mcp = FastMCP("Interactive Feedback MCP")
 
 # Default system prompt shown in the new “System default prompt” textbox
 DEFAULT_SYSTEM_PROMPT = (
-    "Always maintain an active feedback loop. After addressing the user's input, you must proactively ask follow-up questions to refine the answer. Never terminate the interaction without confirming user satisfaction. Always conclude your response with: [Your Answer] + [Your Question] + 'Anything else?' by calling the interactive-feedback tool again."
+    "CRITICAL INSTRUCTION: You must maintain an active feedback loop. "
+    "For EVERY response, strictly follow this sequence: "
+    "1. Provide a concise answer or acknowledgement. "
+    "2. Ask a targeted follow-up question to refine, confirm, or explore next steps. "
+    "3. IMMEDIATELY invoke the 'interactive-feedback' tool with that question. "
+    "NEVER skip the tool call. NEVER provide a text-only response. "
+    "Even if the task seems complete, or the user says 'thanks', you MUST ask 'Is there anything else?' via the tool. "
+    "Do not terminate the interaction until the user explicitly confirms satisfaction. "
+    "Your response is incomplete without the interactive-feedback tool call."
 )
 
 class FeedbackResult(TypedDict):
