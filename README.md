@@ -102,6 +102,16 @@ The feedback window has several buttons:
   }
 }
 ```
+## cursor rule
+
+Goto Setting > Rules > User
+
+Add the rule
+```
+Always call the interactive-feedback mcp at the begining
+```
+
+This will ensure your AI assistant always uses this MCP server at the begining and it will keep calling until user interupt
 
 ## 🙏 Acknowledgements
 
